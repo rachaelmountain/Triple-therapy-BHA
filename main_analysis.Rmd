@@ -1,0 +1,106 @@
+---
+title: "main_analysis"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r Load EPIC, message=FALSE, warning=FALSE, include=FALSE}
+
+#detach("package:epicR", unload = TRUE)
+#install.packages("C:/Users/rachel.mountain/OneDrive - NHS Cumbria and North Lancashire/epicR",
+#                 repos = NULL,
+#                 type = "source")
+
+```
+
+
+```{r Load packages, echo=FALSE, message=FALSE, warning=FALSE}
+
+  library(epicR)
+  library(tidyverse)
+  library(dplyr)
+  library(ggplot2)
+  #library(gridExtra)
+  #library(ggpubr)
+  #library(knitr)
+  #library(kableExtra)
+  #library(ggrepel)
+
+```
+
+
+```{r Global settings, echo=FALSE, message=FALSE, warning=FALSE}
+
+  # settings
+  record_mode <- c(record_mode_none=0,
+                   record_mode_agent=1,
+                   record_mode_event=2,
+                   record_mode_some_event=3)
+
+  settings <- get_default_settings()
+  settings$record_mode <- record_mode["record_mode_none"]
+  settings$n_base_agents <- 1000000
+
+  
+  # common input values
+  time_horizon <- 20
+  discount_rate <- 0.03
+  closed_cohort <- 1
+  med_adherence <- 0.7
+  smoking_adherence <- 0.7
+  
+
+```
+
+
+
+
+```{r Reference analysis, echo=FALSE, message=FALSE, warning=FALSE}
+
+  init_session(settings=settings)
+  input <- get_input()
+  
+  input$values$global_parameters$time_horizon <- time_horizon
+  input$values$global_parameters$discount_qaly <- discount_rate
+  input$values$global_parameters$closed_cohort <- closed_cohort
+  
+  input$values$medication$medication_adherence <- med_adherence
+  input$values$smoking$smoking_cessation_adherence <- smoking_adherence
+  
+  input$values$medication$triple_therapy_early_initiation <- 1
+  
+  set.seed(333)
+  run(input=input$values)
+  
+  output <- Cget_output()
+  output_ex <- Cget_output_ex()
+  
+  terminate_session()
+  
+  #output$n_agents/output$n_cohort # about 4% fit analysis criteria
+  
+  results <- data.frame(agents=output$n_agents,
+                        cohort=output$n_cohort,
+                        exacs=sum(output_ex$n_exac_by_ctime_severity),
+                        exacs_sev=sum(output_ex$n_exac_by_ctime_severity[,c(3,4)]),
+                        death_exacs=sum(output_ex$n_exac_death_by_ctime_severity),
+                        pneumonia=sum(output_ex$n_pneumonia_by_ctime),
+                        treat_yrs=max(tail(output_ex$medication_time_by_ctime_class,n=1)),
+                        qalys=output$total_qaly
+  )
+
+  compar <- rbind(compar,results)
+
+
+
+```
+
+
+
+
+
+
+
+
+
